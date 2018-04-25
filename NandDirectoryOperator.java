@@ -14,6 +14,19 @@ public class NandDirectoryOperator extends BasicNandOperator
 		this.rootFolder = rootFolder;
 	}
 	
+	public boolean setReadOnlyTo(String pathInNand, boolean readOnlyValue) throws IOException 
+	{
+		if(!exists(pathInNand))
+		{
+			return false;
+		}
+		else
+		{
+			new File(rootFolder + pathInNand).setWritable(readOnlyValue);
+			return true;
+		}
+	}
+	
 	public boolean exists(String pathInNand) throws IOException 
 	{
 		return Files.exists(Paths.get(rootFolder + pathInNand));
@@ -48,5 +61,7 @@ public class NandDirectoryOperator extends BasicNandOperator
 	{
 		return Arrays.asList(new File(pathInNand).list());
 	}
+
+
 
 }

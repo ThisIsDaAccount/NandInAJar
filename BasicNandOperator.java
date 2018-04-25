@@ -8,6 +8,7 @@ public abstract class BasicNandOperator
 	protected final String RESOURCES_FOLDER = "DSi_Resources";
 	protected String consoleID;
 	
+	public abstract boolean setReadOnlyTo(String pathInNand, boolean readOnlyValue) throws IOException;
 
     /**
      * Checks if there is a file or directory in this path 
@@ -339,6 +340,48 @@ public abstract class BasicNandOperator
 			}
 		}
 		return containsTMD && containsApp;
+	}
+	
+	public void installUnlaunch (String unlaunchPath) throws IOException 
+	{
+		read("launchertmd.tmd", "title\\00030017\\484E4145\\content\\title.tmd");
+		if(Files.exists(Paths.get("launchertmd.tmd")))
+		{
+			Files.delete(Paths.get("launchertmd.tmd"));
+		}
+		read("launchertmd.tmd", "title\\00030017\\484E4145\\content\\title.tmd");
+		FileOutputStream out = new FileOutputStream("launchertmd.tmd", true);
+		FileInputStream in;
+		int streamSize;
+		in = new FileInputStream (unlaunchPath);
+	   	streamSize = (int)new File(unlaunchPath).length();
+		while(streamSize > 0)
+	   	{
+	   		byte[] b;
+			if (streamSize < 1000)
+	   		{
+	   			b = new byte [streamSize];
+	   			streamSize -= streamSize;
+	   		}
+	   		else
+	   		{
+	   			b = new byte [1000];
+	   			streamSize -= 1000;
+	   		}
+	   		
+			in.read(b);
+			out.write(b);
+	   	}
+		in.close();
+		out.close();
+		write("launchertmd.tmd", "title\\00030017\\484E4145\\content\\title.tmd");
+		Files.delete(Paths.get("launchertmd.tmd"));
+		List <String> launcherFiles = listEntries("title\\00030017\\484E4145\\content");
+		for(String file : launcherFiles)
+		{
+			setReadOnlyTo("title\\00030017\\484E4145\\content\\" + file, true);
+		}
+		
 	}
 	
 }

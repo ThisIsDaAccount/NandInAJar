@@ -6,6 +6,7 @@ import java.util.*;
 
 import de.waldheinz.fs.*;
 import de.waldheinz.fs.FileSystem;
+import de.waldheinz.fs.fat.FatLfnDirectoryEntry;
 import de.waldheinz.fs.util.*;
 
 public class DecryptedNandOperator extends FullNandOperator
@@ -104,6 +105,19 @@ public class DecryptedNandOperator extends FullNandOperator
 		partition0.close();
 		pre.close();
 		post.close();
+		
+		try
+		{
+			File file = new File(RESOURCES_FOLDER + "\\" + new File(this.path).getName()+".partition0");
+			FileDisk device = new FileDisk(file, false);
+			FileSystem fs = FileSystemFactory.create(device, false);
+			fs.close();
+			device.close();
+		}
+		catch (IOException e)
+		{
+			throw new IllegalStateException ();
+		}
 	}
 	
 	public void write (String pathInComputer, String pathInNand) throws IOException
@@ -400,7 +414,8 @@ public class DecryptedNandOperator extends FullNandOperator
 	   	FileInputStream post = new FileInputStream(RESOURCES_FOLDER + "\\" + new File(new File(path).getName()+".post"));
 	   	final int PRE_SIZE = 1109504;
 	   	final int PARTITION0_SIZE = 215945728;
-	   	final int POST_SIZE = (int)(new File(path).length()) - PRE_SIZE - PARTITION0_SIZE;
+	   	//final int POST_SIZE = (int)(new File(path).length()) - PRE_SIZE - PARTITION0_SIZE;
+	   	final int POST_SIZE = 34603008;
 	   	byte [] b;
 
 	   	int preSize = PRE_SIZE;
@@ -461,6 +476,33 @@ public class DecryptedNandOperator extends FullNandOperator
 		post.close();
 		return RESOURCES_FOLDER + "\\" + new File(path).getName() + ".decrypted";
 	}
+	
+	public void makePost0 (String savePath) throws IOException
+	{
+		FileOutputStream in = new FileOutputStream(savePath + ".post0");
+		FileInputStream post = new FileInputStream(RESOURCES_FOLDER + "\\" + new File(new File(path).getName()+".post"));
+	   	
+	   	final int POST_SIZE = 34603008;
+	   	byte [] b;
+
+		int postSize = POST_SIZE;
+	   	while(postSize > 0)
+	   	{
+	   		if (postSize < 1000)
+	   		{
+	   			b = new byte [postSize];
+	   			postSize -= postSize;
+	   		}
+	   		else
+	   		{
+	   			b = new byte [1000];
+	   			postSize -= 1000;
+	   		}
+			post.read(b);
+			in.write(b);
+	   	}
+	}
+	
 	/**
 	 * Closes the DecrypytedNandOperator by deleting 
 	 * its helper file in the Resources folder. 
@@ -471,6 +513,8 @@ public class DecryptedNandOperator extends FullNandOperator
 	public void close () throws IOException
 	{
 		Files.delete(Paths.get(RESOURCES_FOLDER + "\\" + new File(path).getName() + ".partition0"));
+		Files.delete(Paths.get(RESOURCES_FOLDER + "\\" + new File(path).getName() + ".pre"));
+		Files.delete(Paths.get(RESOURCES_FOLDER + "\\" + new File(path).getName() + ".post"));
 		isOpen = false;
 	}
 	
@@ -481,5 +525,37 @@ public class DecryptedNandOperator extends FullNandOperator
 	public boolean isOpen ()
 	{
 		return isOpen;
+	}
+	
+	public boolean setReadOnlyTo(String pathInNand, boolean readOnlyValue) throws IOException
+	{
+		String fileName = new File (pathInNand).getName();
+		String fileDirectory = new File (pathInNand).getParent();
+		File file = new File(RESOURCES_FOLDER + "\\" + new File(this.path).getName()+".partition0");
+		FileDisk device = new FileDisk(file, false);
+		FileSystem fs = FileSystemFactory.create(device, false);
+		FsDirectory fd = fs.getRoot();
+		String [] folders = fileDirectory.split("\\\\");
+		for (String folder : folders)
+		{
+			if(fd.getEntry(folder) == null)
+			{
+				fs.close();
+				device.close();
+				return false;
+			}
+			fd = fd.getEntry(folder).getDirectory();
+		}
+		if(fd.getEntry(fileName) == null)
+		{
+			fs.close();
+			device.close();
+			return false; 
+		}
+		FatLfnDirectoryEntry f = (FatLfnDirectoryEntry) fd.getEntry(fileName);
+		f.setReadOnlyFlag(readOnlyValue);
+		fs.close();
+		device.close();	
+		return true;
 	}
 }
