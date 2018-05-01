@@ -8,6 +8,15 @@ public abstract class BasicNandOperator
 	protected final String RESOURCES_FOLDER = "DSi_Resources";
 	protected String consoleID;
 	
+	/**
+	 * Sets the read only flag for the file/folder
+	 * in the specified path to the specified value
+	 * @param pathInNand the path in the nand for which the flag
+	 * will be modified
+     * @param readOnlyValue the value that the flag will
+     * be set to
+	 * @throws IOException on write/read error
+     */
 	public abstract boolean setReadOnlyTo(String pathInNand, boolean readOnlyValue) throws IOException;
 
     /**
@@ -342,16 +351,53 @@ public abstract class BasicNandOperator
 		return containsTMD && containsApp;
 	}
 	
+	/**
+     * Installs unlaunch using the binary for it in
+     * the specified path
+     * @param unlaunchPath the path where the unlaunch
+     * binary is
+     * @throws IOException on write/read error
+     */
 	public void installUnlaunch (String unlaunchPath) throws IOException 
 	{
+		final int LAUNCHER_TMD_SIZE = 520;
+		FileInputStream in;
+		FileOutputStream out;
 		read("launchertmd.tmd", "title\\00030017\\484E4145\\content\\title.tmd");
 		if(Files.exists(Paths.get("launchertmd.tmd")))
 		{
 			Files.delete(Paths.get("launchertmd.tmd"));
 		}
+		if(Files.exists(Paths.get("trimmedtmd.tmd")))
+		{
+			Files.delete(Paths.get("trimmedtmd.tmd"));
+		}
 		read("launchertmd.tmd", "title\\00030017\\484E4145\\content\\title.tmd");
-		FileOutputStream out = new FileOutputStream("launchertmd.tmd", true);
-		FileInputStream in;
+		in = new FileInputStream("launchertmd.tmd");
+		out = new FileOutputStream("trimmedtmd.tmd");
+		int tmdSize = LAUNCHER_TMD_SIZE;
+		while(tmdSize > 0)
+	   	{
+	   		byte[] b;
+			if (tmdSize < 1000)
+	   		{
+	   			b = new byte [tmdSize];
+	   			tmdSize -= tmdSize;
+	   		}
+	   		else
+	   		{
+	   			b = new byte [1000];
+	   			tmdSize -= 1000;
+	   		}
+	   		
+			in.read(b);
+			out.write(b);
+	   	} 
+		in.close();
+		out.close();
+		Files.delete(Paths.get(("launchertmd.tmd")));
+		Files.copy(Paths.get("trimmedtmd.tmd"), Paths.get("launchertmd.tmd"));
+		out = new FileOutputStream("launchertmd.tmd", true);
 		int streamSize;
 		in = new FileInputStream (unlaunchPath);
 	   	streamSize = (int)new File(unlaunchPath).length();
